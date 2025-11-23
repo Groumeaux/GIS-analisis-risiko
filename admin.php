@@ -25,6 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'Kategori tidak valid!';
         $messageType = 'error';
     } else {
+        // --- ADD ---
         if ($action === 'add') {
             $nama = trim($_POST['nama'] ?? '');
             $lat = $_POST['lat'] ?? '';
@@ -35,14 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($nama && $lat && $lng) {
                 try {
                     if ($category === 'banjir') {
-                        $level = $_POST['level'] ?? 'Sedang';
                         $tanggal = date('Y-m-d');
-                        $stmt = $pdo->prepare("INSERT INTO banjir (id, nama, lat, lng, keterangan, level, tanggal) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$newId, $nama, $lat, $lng, $keterangan, $level, $tanggal]);
+                        $stmt = $pdo->prepare("INSERT INTO banjir (id, nama, lat, lng, keterangan, tanggal) VALUES (?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$newId, $nama, $lat, $lng, $keterangan, $tanggal]);
                     } elseif ($category === 'longsor') {
-                        $level = $_POST['level'] ?? 'Sedang';
-                        $stmt = $pdo->prepare("INSERT INTO longsor (id, nama, lat, lng, keterangan, level) VALUES (?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$newId, $nama, $lat, $lng, $keterangan, $level]);
+                        $stmt = $pdo->prepare("INSERT INTO longsor (id, nama, lat, lng, keterangan) VALUES (?, ?, ?, ?, ?)");
+                        $stmt->execute([$newId, $nama, $lat, $lng, $keterangan]);
                     } else {
                         $stmt = $pdo->prepare("INSERT INTO $category (id, nama, lat, lng, keterangan) VALUES (?, ?, ?, ?, ?)");
                         $stmt->execute([$newId, $nama, $lat, $lng, $keterangan]);
@@ -57,7 +56,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = 'Nama dan Koordinat wajib diisi!';
                 $messageType = 'error';
             }
-        } elseif ($action === 'delete' && isset($_POST['id'])) {
+        } 
+        
+        // --- UPDATE ---
+        elseif ($action === 'update') {
+            $id = $_POST['id'] ?? '';
+            $nama = trim($_POST['nama'] ?? '');
+            $lat = $_POST['lat'] ?? '';
+            $lng = $_POST['lng'] ?? '';
+            $keterangan = trim($_POST['keterangan'] ?? '');
+
+            if ($id && $nama && $lat && $lng) {
+                try {
+                    if ($category === 'banjir') {
+                        $stmt = $pdo->prepare("UPDATE banjir SET nama=?, lat=?, lng=?, keterangan=? WHERE id=?");
+                        $stmt->execute([$nama, $lat, $lng, $keterangan, $id]);
+                    } elseif ($category === 'longsor') {
+                        $stmt = $pdo->prepare("UPDATE longsor SET nama=?, lat=?, lng=?, keterangan=? WHERE id=?");
+                        $stmt->execute([$nama, $lat, $lng, $keterangan, $id]);
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE $category SET nama=?, lat=?, lng=?, keterangan=? WHERE id=?");
+                        $stmt->execute([$nama, $lat, $lng, $keterangan, $id]);
+                    }
+                    $message = 'Data berhasil diperbarui!';
+                    $messageType = 'success';
+                } catch (PDOException $e) {
+                    $message = 'Error Update: ' . $e->getMessage();
+                    $messageType = 'error';
+                }
+            } else {
+                $message = 'Data update tidak lengkap!';
+                $messageType = 'error';
+            }
+        }
+
+        // --- DELETE ---
+        elseif ($action === 'delete' && isset($_POST['id'])) {
             $id = $_POST['id'];
             try {
                 $stmt = $pdo->prepare("DELETE FROM $category WHERE id = ?");
@@ -72,60 +106,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// 3. Configuration & Data Fetching
+// 3. Data Fetching
 $currentTab = $_GET['tab'] ?? 'banjir';
 $validTabs = ['banjir', 'longsor', 'sekolah', 'rs'];
 if (!in_array($currentTab, $validTabs)) $currentTab = 'banjir';
 
-// --- COLOR CONFIGURATION ---
-// Defines the specific styling for each category to match index.php
+// Color Config
 $categoryConfig = [
-    'banjir' => [
-        'label' => 'Banjir', 
-        'icon' => 'cloud-rain', 
-        'tab_active' => 'bg-red-600 text-white shadow-red-200', 
-        'header_bg' => 'bg-red-50', 
-        'header_text' => 'text-red-800', 
-        'border' => 'border-red-100',
-        'icon_bg' => 'bg-red-100',
-        'icon_text' => 'text-red-600',
-        'btn_bg' => 'bg-red-600 hover:bg-red-700 shadow-red-500/30'
-    ],
-    'longsor' => [
-        'label' => 'Longsor', 
-        'icon' => 'mountain', 
-        'tab_active' => 'bg-orange-500 text-white shadow-orange-200', 
-        'header_bg' => 'bg-orange-50', 
-        'header_text' => 'text-orange-800', 
-        'border' => 'border-orange-100',
-        'icon_bg' => 'bg-orange-100',
-        'icon_text' => 'text-orange-600',
-        'btn_bg' => 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/30'
-    ],
-    'sekolah' => [
-        'label' => 'Sekolah', 
-        'icon' => 'school', 
-        'tab_active' => 'bg-blue-600 text-white shadow-blue-200', 
-        'header_bg' => 'bg-blue-50', 
-        'header_text' => 'text-blue-800', 
-        'border' => 'border-blue-100',
-        'icon_bg' => 'bg-blue-100',
-        'icon_text' => 'text-blue-600',
-        'btn_bg' => 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'
-    ],
-    'rs' => [
-        'label' => 'Rumah Sakit', 
-        'icon' => 'hospital', 
-        'tab_active' => 'bg-green-600 text-white shadow-green-200', 
-        'header_bg' => 'bg-green-50', 
-        'header_text' => 'text-green-800', 
-        'border' => 'border-green-100',
-        'icon_bg' => 'bg-green-100',
-        'icon_text' => 'text-green-600',
-        'btn_bg' => 'bg-green-600 hover:bg-green-700 shadow-green-500/30'
-    ]
+    'banjir' => ['label' => 'Banjir', 'icon' => 'cloud-rain', 'header_bg' => 'bg-red-50', 'header_text' => 'text-red-800', 'border' => 'border-red-100', 'icon_bg' => 'bg-red-100', 'icon_text' => 'text-red-600', 'btn_bg' => 'bg-red-600 hover:bg-red-700', 'tab_active' => 'bg-red-600 text-white'],
+    'longsor' => ['label' => 'Longsor', 'icon' => 'mountain', 'header_bg' => 'bg-orange-50', 'header_text' => 'text-orange-800', 'border' => 'border-orange-100', 'icon_bg' => 'bg-orange-100', 'icon_text' => 'text-orange-600', 'btn_bg' => 'bg-orange-500 hover:bg-orange-600', 'tab_active' => 'bg-orange-500 text-white'],
+    'sekolah' => ['label' => 'Sekolah', 'icon' => 'school', 'header_bg' => 'bg-blue-50', 'header_text' => 'text-blue-800', 'border' => 'border-blue-100', 'icon_bg' => 'bg-blue-100', 'icon_text' => 'text-blue-600', 'btn_bg' => 'bg-blue-600 hover:bg-blue-700', 'tab_active' => 'bg-blue-600 text-white'],
+    'rs' => ['label' => 'Rumah Sakit', 'icon' => 'hospital', 'header_bg' => 'bg-green-50', 'header_text' => 'text-green-800', 'border' => 'border-green-100', 'icon_bg' => 'bg-green-100', 'icon_text' => 'text-green-600', 'btn_bg' => 'bg-green-600 hover:bg-green-700', 'tab_active' => 'bg-green-600 text-white']
 ];
-
 $activeConfig = $categoryConfig[$currentTab];
 
 $currentData = [];
@@ -151,6 +143,40 @@ try {
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         .leaflet-container { z-index: 0; }
+
+        /* --- CUSTOM SCROLLBAR LOGIC --- */
+        /* Applies to all elements with a scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        /* Track is always transparent */
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        /* Thumb is transparent by default (hidden) */
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+        /* Show Thumb on Hover */
+        *:hover::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* gray-300 */
+        }
+        /* Darker Thumb on Active/Hover state */
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* gray-400 */
+        }
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+            transition: scrollbar-color 0.3s ease;
+        }
+        *:hover {
+            scrollbar-color: #cbd5e1 transparent;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -158,11 +184,9 @@ try {
     <div class="min-h-screen flex flex-col">
         <nav class="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
             <div class="flex items-center gap-3">
-                <div class="bg-blue-600 p-2 rounded-lg text-white">
-                    <i data-lucide="database" class="w-5 h-5"></i>
-                </div>
+                <div class="bg-blue-900 p-2 rounded-lg text-white"><i data-lucide="database" class="w-5 h-5"></i></div>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight text-gray-900">SIG Minahasa</h1>
+                    <h1 class="font-bold text-lg leading-tight text-gray-900">SIG Bencana Minahasa</h1>
                     <p class="text-xs text-gray-500 font-medium">Database Manager</p>
                 </div>
             </div>
@@ -174,14 +198,11 @@ try {
                 <a href="index.php" class="text-gray-500 hover:text-blue-600 transition text-sm font-medium flex items-center gap-1">
                     <i data-lucide="external-link" class="w-4 h-4"></i> Lihat Peta
                 </a>
-                <a href="?logout=1" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-bold transition">
-                    Logout
-                </a>
+                <a href="?logout=1" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-sm font-bold transition">Logout</a>
             </div>
         </nav>
 
         <div class="flex-1 max-w-7xl mx-auto w-full p-6">
-            
             <?php if ($message): ?>
                 <div class="mb-6 p-4 rounded-xl border <?php echo $messageType === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'; ?> flex items-center gap-3 shadow-sm">
                     <i data-lucide="<?php echo $messageType === 'success' ? 'check-circle' : 'alert-circle'; ?>" class="w-5 h-5"></i>
@@ -190,14 +211,9 @@ try {
             <?php endif; ?>
 
             <div class="bg-white p-1.5 rounded-xl border border-gray-200 shadow-sm inline-flex mb-8 overflow-x-auto max-w-full space-x-1">
-                <?php foreach($categoryConfig as $key => $cfg): 
-                    $isActive = $currentTab === $key;
-                    // Use specific active class if active, else generic gray
-                    $tabClass = $isActive ? $cfg['tab_active'] . ' shadow-md' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50';
-                    $iconColor = $isActive ? 'text-white' : 'text-gray-400';
-                ?>
-                    <a href="?tab=<?php echo $key; ?>" class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 <?php echo $tabClass; ?>">
-                        <i data-lucide="<?php echo $cfg['icon']; ?>" class="w-4 h-4 <?php echo $iconColor; ?>"></i>
+                <?php foreach($categoryConfig as $key => $cfg): $isActive = $currentTab === $key; ?>
+                    <a href="?tab=<?php echo $key; ?>" class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all duration-200 <?php echo $isActive ? $cfg['tab_active'] . ' shadow-md' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'; ?>">
+                        <i data-lucide="<?php echo $cfg['icon']; ?>" class="w-4 h-4 <?php echo $isActive ? 'text-white' : 'text-gray-400'; ?>"></i>
                         <?php echo $cfg['label']; ?>
                     </a>
                 <?php endforeach; ?>
@@ -207,25 +223,25 @@ try {
                 
                 <div class="lg:col-span-4">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden sticky top-24">
-                        
                         <div class="<?php echo $activeConfig['header_bg']; ?> px-6 py-4 border-b <?php echo $activeConfig['border']; ?> flex items-center gap-3">
                             <div class="p-2 rounded-lg bg-white/60 <?php echo $activeConfig['header_text']; ?>">
                                 <i data-lucide="<?php echo $activeConfig['icon']; ?>" class="w-5 h-5"></i>
                             </div>
                             <div>
-                                <h2 class="font-bold <?php echo $activeConfig['header_text']; ?> leading-none">Tambah Data</h2>
+                                <h2 class="font-bold <?php echo $activeConfig['header_text']; ?> leading-none" id="form-title">Tambah Data</h2>
                                 <p class="text-xs <?php echo $activeConfig['header_text']; ?> opacity-80 mt-1">Kategori: <?php echo $activeConfig['label']; ?></p>
                             </div>
                         </div>
 
                         <div class="p-6">
-                            <form method="POST" class="space-y-5">
+                            <form method="POST" class="space-y-5" id="data-form">
                                 <input type="hidden" name="category" value="<?php echo $currentTab; ?>">
-                                <input type="hidden" name="action" value="add">
+                                <input type="hidden" name="action" id="form-action" value="add">
+                                <input type="hidden" name="id" id="form-id" value="">
 
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Nama Lokasi</label>
-                                    <input type="text" name="nama" required class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 block p-2.5 outline-none transition" placeholder="Nama tempat...">
+                                    <input type="text" name="nama" id="input-nama" required class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 block p-2.5 outline-none transition" placeholder="Nama tempat...">
                                 </div>
 
                                 <div>
@@ -245,25 +261,19 @@ try {
                                     </div>
                                 </div>
 
-                                <?php if ($currentTab === 'banjir' || $currentTab === 'longsor'): ?>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Level Risiko</label>
-                                        <select name="level" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-blue-500 block p-2.5">
-                                            <option value="Rendah">Rendah</option>
-                                            <option value="Sedang" selected>Sedang</option>
-                                            <option value="Tinggi">Tinggi</option>
-                                        </select>
-                                    </div>
-                                <?php endif; ?>
-
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Keterangan</label>
-                                    <textarea name="keterangan" rows="3" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-blue-500 block p-2.5 resize-none"></textarea>
+                                    <textarea name="keterangan" id="input-keterangan" rows="3" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-lg focus:ring-blue-500 block p-2.5 resize-none"></textarea>
                                 </div>
 
-                                <button type="submit" class="w-full text-white font-bold rounded-lg text-sm px-5 py-3 transition-all duration-200 shadow-lg <?php echo $activeConfig['btn_bg']; ?>">
-                                    Simpan ke Database
-                                </button>
+                                <div class="flex gap-2">
+                                    <button type="submit" id="btn-submit" class="flex-1 text-white font-bold rounded-lg text-sm px-5 py-3 transition-all duration-200 shadow-lg <?php echo $activeConfig['btn_bg']; ?>">
+                                        Simpan
+                                    </button>
+                                    <button type="button" id="btn-cancel" onclick="cancelEdit()" class="hidden px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-lg text-sm transition">
+                                        Batal
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -271,42 +281,38 @@ try {
 
                 <div class="lg:col-span-8">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-full">
-                        
                         <div class="<?php echo $activeConfig['header_bg']; ?> px-6 py-5 border-b <?php echo $activeConfig['border']; ?> flex justify-between items-center">
                             <div class="flex items-center gap-3">
-                                <div class="p-1.5 rounded-md bg-white/60 <?php echo $activeConfig['header_text']; ?>">
-                                    <i data-lucide="list" class="w-4 h-4"></i>
-                                </div>
+                                <div class="p-1.5 rounded-md bg-white/60 <?php echo $activeConfig['header_text']; ?>"><i data-lucide="list" class="w-4 h-4"></i></div>
                                 <h2 class="font-bold <?php echo $activeConfig['header_text']; ?> text-lg">Data Tersimpan</h2>
                             </div>
                             <span class="bg-white/80 <?php echo $activeConfig['header_text']; ?> text-xs font-bold px-2.5 py-0.5 rounded border <?php echo $activeConfig['border']; ?> uppercase"><?php echo $activeConfig['label']; ?></span>
                         </div>
                         
-                        <div class="overflow-x-auto flex-grow">
+                        <div class="overflow-x-auto flex-grow custom-scrollbar">
                             <table class="w-full text-sm text-left">
                                 <thead class="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100">
                                     <tr>
                                         <th class="px-6 py-3 font-bold">Nama & Icon</th>
                                         <th class="px-6 py-3 font-bold">Koordinat</th>
                                         <th class="px-6 py-3 font-bold">Info</th>
-                                        <?php if ($currentTab === 'banjir' || $currentTab === 'longsor'): ?><th class="px-6 py-3 font-bold">Level</th><?php endif; ?>
                                         <th class="px-6 py-3 font-bold text-right">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
                                     <?php if (empty($currentData)): ?>
                                         <tr>
-                                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                                            <td colspan="4" class="px-6 py-12 text-center text-gray-400">
                                                 <div class="flex flex-col items-center justify-center">
-                                                    <div class="bg-gray-50 p-4 rounded-full mb-3">
-                                                        <i data-lucide="<?php echo $activeConfig['icon']; ?>" class="w-8 h-8 opacity-20"></i>
-                                                    </div>
+                                                    <div class="bg-gray-50 p-4 rounded-full mb-3"><i data-lucide="<?php echo $activeConfig['icon']; ?>" class="w-8 h-8 opacity-20"></i></div>
                                                     <p>Database kosong untuk kategori ini.</p>
                                                 </div>
                                             </td>
                                         </tr>
                                     <?php else: ?>
-                                        <?php foreach ($currentData as $item): ?>
+                                        <?php foreach ($currentData as $item): 
+                                            $itemJson = htmlspecialchars(json_encode($item), ENT_QUOTES, 'UTF-8');
+                                        ?>
                                             <tr class="bg-white hover:bg-blue-50/50 transition group">
                                                 <td class="px-6 py-4">
                                                     <div class="flex items-center gap-3">
@@ -320,29 +326,16 @@ try {
                                                     <?php echo number_format($item['lat'], 4); ?>, <br>
                                                     <?php echo number_format($item['lng'], 4); ?>
                                                 </td>
-                                                <td class="px-6 py-4 text-gray-500 max-w-xs truncate">
-                                                    <?php echo htmlspecialchars($item['keterangan'] ?? '-'); ?>
-                                                </td>
-                                                <?php if (isset($item['level'])): ?>
-                                                    <td class="px-6 py-4">
-                                                        <?php 
-                                                        $badgeColor = match($item['level']) {
-                                                            'Tinggi' => 'bg-red-100 text-red-700 border-red-200',
-                                                            'Sedang' => 'bg-yellow-100 text-yellow-700 border-yellow-200',
-                                                            default => 'bg-green-100 text-green-700 border-green-200'
-                                                        };
-                                                        ?>
-                                                        <span class="<?php echo $badgeColor; ?> text-xs font-bold px-2.5 py-0.5 rounded border">
-                                                            <?php echo htmlspecialchars($item['level']); ?>
-                                                        </span>
-                                                    </td>
-                                                <?php endif; ?>
-                                                <td class="px-6 py-4 text-right">
+                                                <td class="px-6 py-4 text-gray-500 max-w-xs truncate"><?php echo htmlspecialchars($item['keterangan'] ?? '-'); ?></td>
+                                                <td class="px-6 py-4 text-right whitespace-nowrap">
+                                                    <button onclick="editItem(<?php echo $itemJson; ?>)" class="text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 p-2 rounded-full transition mr-1" title="Edit">
+                                                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                                                    </button>
                                                     <form method="POST" class="inline-block" onsubmit="return confirm('Hapus permanen dari database?')">
                                                         <input type="hidden" name="category" value="<?php echo $currentTab; ?>">
                                                         <input type="hidden" name="action" value="delete">
                                                         <input type="hidden" name="id" value="<?php echo $item['id']; ?>">
-                                                        <button type="submit" class="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition">
+                                                        <button type="submit" class="text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition" title="Hapus">
                                                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                                                         </button>
                                                     </form>
@@ -362,22 +355,51 @@ try {
     <script>
         lucide.createIcons();
 
+        function editItem(data) {
+            document.getElementById('form-action').value = 'update';
+            document.getElementById('form-id').value = data.id;
+            document.getElementById('input-nama').value = data.nama;
+            document.getElementById('lat-input').value = data.lat;
+            document.getElementById('lng-input').value = data.lng;
+            document.getElementById('input-keterangan').value = data.keterangan || '';
+            
+            document.getElementById('form-title').innerText = 'Edit Data';
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerText = 'Update Data';
+            btnSubmit.className = "flex-1 text-white font-bold rounded-lg text-sm px-5 py-3 transition-all duration-200 shadow-lg bg-yellow-500 hover:bg-yellow-600"; 
+            document.getElementById('btn-cancel').classList.remove('hidden');
+
+            if(typeof window.updateMapMarker === 'function') {
+                window.updateMapMarker(data.lat, data.lng);
+            }
+            document.getElementById('data-form').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function cancelEdit() {
+            document.getElementById('data-form').reset();
+            document.getElementById('form-action').value = 'add';
+            document.getElementById('form-id').value = '';
+            
+            document.getElementById('form-title').innerText = 'Tambah Data';
+            const btnSubmit = document.getElementById('btn-submit');
+            btnSubmit.innerText = 'Simpan';
+            btnSubmit.className = "flex-1 text-white font-bold rounded-lg text-sm px-5 py-3 transition-all duration-200 shadow-lg <?php echo $activeConfig['btn_bg']; ?>";
+            document.getElementById('btn-cancel').classList.add('hidden');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const defaultLat = 1.3113; 
             const defaultLng = 124.9078;
             
             const map = L.map('preview-map').setView([defaultLat, defaultLng], 12);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-            // Dynamic Marker Color based on Category
             let markerColor = 'blue'; 
             const category = "<?php echo $currentTab; ?>";
-            if(category === 'banjir') markerColor = '#ef4444'; // Red
-            if(category === 'longsor') markerColor = '#f97316'; // Orange
-            if(category === 'sekolah') markerColor = '#2563eb'; // Blue
-            if(category === 'rs') markerColor = '#16a34a'; // Green
+            if(category === 'banjir') markerColor = '#ef4444';
+            if(category === 'longsor') markerColor = '#f97316';
+            if(category === 'sekolah') markerColor = '#2563eb';
+            if(category === 'rs') markerColor = '#16a34a';
 
             const customIcon = L.divIcon({
                 className: 'bg-transparent',
@@ -386,13 +408,16 @@ try {
                 iconAnchor: [12, 12]
             });
 
-            let marker = L.marker([defaultLat, defaultLng], { 
-                draggable: true,
-                icon: customIcon 
-            }).addTo(map);
+            let marker = L.marker([defaultLat, defaultLng], { draggable: true, icon: customIcon }).addTo(map);
             
             const latInput = document.getElementById('lat-input');
             const lngInput = document.getElementById('lng-input');
+
+            window.updateMapMarker = function(lat, lng) {
+                const newLatLng = new L.LatLng(parseFloat(lat), parseFloat(lng));
+                marker.setLatLng(newLatLng);
+                map.panTo(newLatLng);
+            };
 
             function updateInputs(lat, lng) {
                 latInput.value = lat.toFixed(6);
